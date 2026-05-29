@@ -7,14 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -34,12 +30,12 @@ public class ChatService {
                 .build());
 
         ChatClient chatClient = chatClientBuilder
-                .defaultAdvisors(new PromptChatMemoryAdvisor(chatMemory))
+                .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
 
         String response = chatClient.prompt()
                 .user(userMessage)
-                .advisors(a -> a.param(PromptChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
+                .advisors(a -> a.param("chat_memory_conversation_id", conversationId))
                 .call()
                 .content();
 

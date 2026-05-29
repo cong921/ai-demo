@@ -32,3 +32,9 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+
+app:
+  auto-reply:
+    enabled: true
+    knowledge-base:
+      profile-path: classpath:knowledge/profile.md
