@@ -38,3 +38,7 @@ app:
     enabled: true
     knowledge-base:
       profile-path: classpath:knowledge/profile.md
+  browser-bot:
+    chrome-path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+    poll-interval-seconds: 3
+    headless: false
