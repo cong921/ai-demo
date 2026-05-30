@@ -24,6 +24,7 @@ public class BrowserBotService {
     private volatile boolean running = false;
     private final Set<String> processedMessages = ConcurrentHashMap.newKeySet();
     private ScheduledExecutorService scheduler;
+    private ScheduledFuture<?> pollTask;
 
     public BrowserBotService(AutoReplyService autoReplyService, BrowserSelectorConfig selectorConfig) {
         this.autoReplyService = autoReplyService;
@@ -36,44 +37,63 @@ public class BrowserBotService {
             return;
         }
 
-        playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-                .setHeadless(selectorConfig.isHeadless())
-                .setExecutablePath(Paths.get(chromeExecutablePath)));
+        try {
+            playwright = Playwright.create();
+            browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(selectorConfig.isHeadless())
+                    .setExecutablePath(Paths.get(chromeExecutablePath)));
 
-        context = browser.newContext();
-        page = context.newPage();
+            context = browser.newContext();
+            page = context.newPage();
 
-        page.navigate("https://www.zhipin.com/web/geek/chat");
-        log.info("已打开 Boss 直聘聊天页面，请扫码登录...");
+            page.navigate("https://www.zhipin.com/web/geek/chat");
+            log.info("已打开 Boss 直聘聊天页面，请扫码登录...");
 
-        running = true;
+            running = true;
 
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(
-                this::checkNewMessages,
-                10,
-                selectorConfig.getPollIntervalSeconds(),
-                TimeUnit.SECONDS);
+            scheduler = Executors.newSingleThreadScheduledExecutor();
+            pollTask = scheduler.scheduleAtFixedRate(
+                    this::checkNewMessages,
+                    10,
+                    selectorConfig.getPollIntervalSeconds(),
+                    TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("启动浏览器机器人失败", e);
+            cleanup();
+            throw new RuntimeException("启动浏览器机器人失败", e);
+        }
     }
 
     private void checkNewMessages() {
-        if (!running || page == null) return;
+        if (!running || page == null || page.isClosed()) {
+            return;
+        }
 
         try {
             List<ElementHandle> messages = page.querySelectorAll(selectorConfig.getMessageItemSelector());
 
             for (ElementHandle msg : messages) {
-                String senderClass = msg.getAttribute("class");
-                if (senderClass != null && senderClass.contains(selectorConfig.getOtherMessageClass())) {
-                    String messageText = msg.innerText().trim();
-                    String messageId = msg.getAttribute("data-id");
+                try {
+                    String senderClass = msg.getAttribute("class");
+                    if (senderClass != null && senderClass.contains(selectorConfig.getOtherMessageClass())) {
+                        String messageText = msg.innerText().trim();
+                        String messageId = msg.getAttribute("data-id");
 
-                    if (messageId != null && !processedMessages.contains(messageId)) {
-                        processedMessages.add(messageId);
-                        handleNewMessage(messageText);
+                        if (messageId != null && !processedMessages.contains(messageId)) {
+                            processedMessages.add(messageId);
+                            handleNewMessage(messageText);
+                        }
                     }
+                } catch (Exception e) {
+                    log.warn("处理单条消息时出错，跳过", e);
                 }
+            }
+        } catch (PlaywrightException e) {
+            if (e.getMessage().contains("Target page, context or browser has been closed")) {
+                log.warn("浏览器页面已关闭，停止轮询");
+                running = false;
+            } else {
+                log.error("检查新消息时出错", e);
             }
         } catch (Exception e) {
             log.error("检查新消息时出错", e);
@@ -95,6 +115,11 @@ public class BrowserBotService {
     }
 
     private void sendReply(String reply) {
+        if (!running || page == null || page.isClosed()) {
+            log.warn("浏览器已关闭，无法发送回复");
+            return;
+        }
+
         try {
             ElementHandle inputBox = page.waitForSelector(
                     selectorConfig.getInputBoxSelector(),
@@ -122,19 +147,30 @@ public class BrowserBotService {
 
     public void stop() {
         running = false;
+        if (pollTask != null) {
+            pollTask.cancel(false);
+        }
         if (scheduler != null) {
             scheduler.shutdown();
         }
+        cleanup();
+        log.info("浏览器机器人已停止");
+    }
+
+    private void cleanup() {
         if (context != null) {
-            context.close();
+            try { context.close(); } catch (Exception ignored) {}
+            context = null;
         }
         if (browser != null) {
-            browser.close();
+            try { browser.close(); } catch (Exception ignored) {}
+            browser = null;
         }
         if (playwright != null) {
-            playwright.close();
+            try { playwright.close(); } catch (Exception ignored) {}
+            playwright = null;
         }
-        log.info("浏览器机器人已停止");
+        page = null;
     }
 
     public boolean isRunning() {
