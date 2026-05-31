@@ -20,7 +20,7 @@ public class ChatService {
                 .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
 
-        String response = chatClient.prompt()
+        String response = chatClient.prompt().system("你必须只根据知识库回答，不允许编造")
                 .user(userMessage)
                 .advisors(a -> a.param("chat_memory_conversation_id", conversationId))
                 .call()

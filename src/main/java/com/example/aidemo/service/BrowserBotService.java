@@ -46,7 +46,7 @@ public class BrowserBotService {
             context = browser.newContext();
             page = context.newPage();
 
-            page.navigate("https://www.zhipin.com/web/geek/chat");
+            page.navigate("https://www.zhipin.com/web/user/?ka=header-login");
             log.info("已打开 Boss 直聘聊天页面，请扫码登录...");
 
             running = true;
@@ -101,17 +101,17 @@ public class BrowserBotService {
     }
 
     private void handleNewMessage(String hrMessage) {
-        log.info("收到 HR 消息: {}", hrMessage);
-
-        ReplySuggestion suggestion = autoReplyService.suggestReply(hrMessage);
-
-        if (suggestion.isMatched()) {
-            String reply = suggestion.getSuggestedReply();
-            log.info("AI 生成回复: {}", reply);
-            sendReply(reply);
-        } else {
-            log.info("未匹配到已知问题类型，跳过回复: {}", hrMessage);
-        }
+//        log.info("收到 HR 消息: {}", hrMessage);
+//
+//        ReplySuggestion suggestion = autoReplyService.suggestReply(hrMessage);
+//
+//        if (suggestion.isMatched()) {
+//            String reply = suggestion.getSuggestedReply();
+//            log.info("AI 生成回复: {}", reply);
+//            sendReply(reply);
+//        } else {
+//            log.info("未匹配到已知问题类型，跳过回复: {}", hrMessage);
+//        }
     }
 
     private void sendReply(String reply) {

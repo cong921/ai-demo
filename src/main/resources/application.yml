@@ -7,11 +7,11 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:sk-your-api-key}
-      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      api-key: sk-f7ec16d0490d4fd9b20afc049ca1bab5
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/
       chat:
         options:
-          model: gpt-4o-mini
+          model: qwen3.6-plus
           temperature: 0.7
 
 
@@ -19,7 +19,7 @@ app:
   auto-reply:
     enabled: true
     knowledge-base:
-      profile-path: classpath:knowledge/profile.md
+      profile-path: classpath:knowledge/profile.json
   browser-bot:
     chrome-path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
     poll-interval-seconds: 3

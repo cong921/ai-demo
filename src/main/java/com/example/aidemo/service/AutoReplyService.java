@@ -17,25 +17,32 @@ public class AutoReplyService {
     public ReplySuggestion suggestReply(String hrMessage) {
         String relevantInfo = knowledgeBaseService.retrieveRelevantInfo(hrMessage);
 
-        if (relevantInfo == null || relevantInfo.isBlank()) {
-            return ReplySuggestion.builder()
-                    .matched(false)
-                    .suggestedReply("未找到相关信息，请检查知识库配置")
-                    .build();
+        String systemPrompt;
+        boolean hasKnowledge = relevantInfo != null && !relevantInfo.isBlank();
+
+        if (hasKnowledge) {
+            systemPrompt = """
+                    你是一位专业的求职沟通顾问。请根据以下个人信息，回答 HR 的问题。
+                    要求：
+                    1. 语气自然、专业、礼貌
+                    2. 回答简洁，不要太长（50字以内）
+                    3. 不要编造个人信息中没有的内容
+                    4. 如果信息不足，可以委婉表示需要进一步沟通
+                    5. 用第一人称"我"来回答
+
+                    个人信息：
+                    %s
+                    """.formatted(relevantInfo);
+        } else {
+            systemPrompt = """
+                    你是一位专业的求职沟通顾问。请回答 HR 的问题。
+                    要求：
+                    1. 语气自然、专业、礼貌
+                    2. 回答简洁，不要太长（50字以内）
+                    3. 用第一人称"我"来回答
+                    4. 如果不确定如何回答，可以委婉表示需要进一步沟通
+                    """;
         }
-
-        String systemPrompt = """
-                你是一位专业的求职沟通顾问。请根据以下个人信息，回答 HR 的问题。
-                要求：
-                1. 语气自然、专业、礼貌
-                2. 回答简洁，不要太长（50字以内）
-                3. 不要编造个人信息中没有的内容
-                4. 如果信息不足，可以委婉表示需要进一步沟通
-                5. 用第一人称"我"来回答
-
-                个人信息：
-                %s
-                """.formatted(relevantInfo);
 
         try {
             String reply = chatClientBuilder.build()
@@ -49,7 +56,7 @@ public class AutoReplyService {
                     .matched(true)
                     .questionType(extractQuestionType(hrMessage))
                     .suggestedReply(reply)
-                    .confidence(0.9)
+                    .confidence(hasKnowledge ? 0.9 : 0.7)
                     .build();
         } catch (Exception e) {
             log.error("AI 生成回复失败", e);

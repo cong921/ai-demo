@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class AutoReplyRequest {
 
     private String hrMessage;
+    private String conversationId;
 }
